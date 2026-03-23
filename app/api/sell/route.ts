@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
     lang: "cn",
   });
   console.log("出售请求参数", Object.fromEntries(params.entries()));
-
-  const res = await fetch("https://www.akapi1.com/RPC/ACE_Sell", {
+  try{
+      const res = await fetch("https://www.akapi1.com/RPC/ACE_Sell", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -38,4 +38,9 @@ if (!res.ok) {
 }
 
 const data = await res.json();
+return NextResponse.json(data);
+  }catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "服务器错误" }, { status: 500 }); // ← return
+  }
 }
