@@ -3,38 +3,40 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 
 /* ── tiny md5 ── */
 function md5(str: string): string {
-  function safeAdd(x: number, y: number) { const lsw=(x&0xFFFF)+(y&0xFFFF); return (((x>>16)+(y>>16)+(lsw>>16))<<16)|(lsw&0xFFFF) }
-  function bitRotL(num: number, cnt: number) { return (num<<cnt)|(num>>>(32-cnt)) }
-  function md5cmn(q:number,a:number,b:number,x:number,s:number,t:number){return safeAdd(bitRotL(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b)}
-  function ff(a:number,b:number,c:number,d:number,x:number,s:number,t:number){return md5cmn((b&c)|((~b)&d),a,b,x,s,t)}
-  function gg(a:number,b:number,c:number,d:number,x:number,s:number,t:number){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t)}
-  function hh(a:number,b:number,c:number,d:number,x:number,s:number,t:number){return md5cmn(b^c^d,a,b,x,s,t)}
-  function ii(a:number,b:number,c:number,d:number,x:number,s:number,t:number){return md5cmn(c^(b|(~d)),a,b,x,s,t)}
-  function md5blks(s:string){const b:number[]=[]; for(let i=0;i<s.length*32;i+=8)b[i>>5]|=(s.charCodeAt(i/8)&0xFF)<<(i%32); b[s.length*8>>5]|=0x80<<(s.length*8%32); b[(((s.length*8+64)>>>9)<<4)+14]=s.length*8; return b}
-  const x=md5blks(str);let a=1732584193,b=-271733879,c=-1732584194,d=271733878
-  for(let i=0;i<x.length;i+=16){const[oa,ob,oc,od]=[a,b,c,d]
-  a=ff(a,b,c,d,x[i],7,-680876936);d=ff(d,a,b,c,x[i+1],12,-389564586);c=ff(c,d,a,b,x[i+2],17,606105819);b=ff(b,c,d,a,x[i+3],22,-1044525330)
-  a=ff(a,b,c,d,x[i+4],7,-176418897);d=ff(d,a,b,c,x[i+5],12,1200080426);c=ff(c,d,a,b,x[i+6],17,-1473231341);b=ff(b,c,d,a,x[i+7],22,-45705983)
-  a=ff(a,b,c,d,x[i+8],7,1770035416);d=ff(d,a,b,c,x[i+9],12,-1958414417);c=ff(c,d,a,b,x[i+10],17,-42063);b=ff(b,c,d,a,x[i+11],22,-1990404162)
-  a=ff(a,b,c,d,x[i+12],7,1804603682);d=ff(d,a,b,c,x[i+13],12,-40341101);c=ff(c,d,a,b,x[i+14],17,-1502002290);b=ff(b,c,d,a,x[i+15],22,1236535329)
-  a=gg(a,b,c,d,x[i+1],5,-165796510);d=gg(d,a,b,c,x[i+6],9,-1069501632);c=gg(c,d,a,b,x[i+11],14,643717713);b=gg(b,c,d,a,x[i],20,-373897302)
-  a=gg(a,b,c,d,x[i+5],5,-701558691);d=gg(d,a,b,c,x[i+10],9,38016083);c=gg(c,d,a,b,x[i+15],14,-660478335);b=gg(b,c,d,a,x[i+4],20,-405537848)
-  a=gg(a,b,c,d,x[i+9],5,568446438);d=gg(d,a,b,c,x[i+14],9,-1019803690);c=gg(c,d,a,b,x[i+3],14,-187363961);b=gg(b,c,d,a,x[i+8],20,1163531501)
-  a=gg(a,b,c,d,x[i+13],5,-1444681467);d=gg(d,a,b,c,x[i+2],9,-51403784);c=gg(c,d,a,b,x[i+7],14,1735328473);b=gg(b,c,d,a,x[i+12],20,-1926607734)
-  a=hh(a,b,c,d,x[i+5],4,-378558);d=hh(d,a,b,c,x[i+8],11,-2022574463);c=hh(c,d,a,b,x[i+11],16,1839030562);b=hh(b,c,d,a,x[i+14],23,-35309556)
-  a=hh(a,b,c,d,x[i+1],4,-1530992060);d=hh(d,a,b,c,x[i+4],11,1272893353);c=hh(c,d,a,b,x[i+7],16,-155497632);b=hh(b,c,d,a,x[i+10],23,-1094730640)
-  a=hh(a,b,c,d,x[i+13],4,681279174);d=hh(d,a,b,c,x[i],11,-358537222);c=hh(c,d,a,b,x[i+3],16,-722521979);b=hh(b,c,d,a,x[i+6],23,76029189)
-  a=hh(a,b,c,d,x[i+9],4,-640364487);d=hh(d,a,b,c,x[i+12],11,-421815835);c=hh(c,d,a,b,x[i+15],16,530742520);b=hh(b,c,d,a,x[i+2],23,-995338651)
-  a=ii(a,b,c,d,x[i],6,-198630844);d=ii(d,a,b,c,x[i+7],10,1126891415);c=ii(c,d,a,b,x[i+14],15,-1416354905);b=ii(b,c,d,a,x[i+5],21,-57434055)
-  a=ii(a,b,c,d,x[i+12],6,1700485571);d=ii(d,a,b,c,x[i+3],10,-1894986606);c=ii(c,d,a,b,x[i+10],15,-1051523);b=ii(b,c,d,a,x[i+1],21,-2054922799)
-  a=ii(a,b,c,d,x[i+8],6,1873313359);d=ii(d,a,b,c,x[i+15],10,-30611744);c=ii(c,d,a,b,x[i+6],15,-1560198380);b=ii(b,c,d,a,x[i+13],21,1309151649)
-  a=ii(a,b,c,d,x[i+4],6,-145523070);d=ii(d,a,b,c,x[i+11],10,-1120210379);c=ii(c,d,a,b,x[i+2],15,718787259);b=ii(b,c,d,a,x[i+9],21,-343485551)
-  a=safeAdd(a,oa);b=safeAdd(b,ob);c=safeAdd(c,oc);d=safeAdd(d,od)}
-  function rh(n:number){return ('0'+((n>>>0).toString(16))).slice(-8).match(/../g)!.reverse().join('')}
-  return [a,b,c,d].map(rh).join('')
+  function safeAdd(x: number, y: number) { const lsw = (x & 0xFFFF) + (y & 0xFFFF); return (((x >> 16) + (y >> 16) + (lsw >> 16)) << 16) | (lsw & 0xFFFF) }
+  function bitRotL(num: number, cnt: number) { return (num << cnt) | (num >>> (32 - cnt)) }
+  function md5cmn(q: number, a: number, b: number, x: number, s: number, t: number) { return safeAdd(bitRotL(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b) }
+  function ff(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return md5cmn((b & c) | ((~b) & d), a, b, x, s, t) }
+  function gg(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return md5cmn((b & d) | (c & (~d)), a, b, x, s, t) }
+  function hh(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return md5cmn(b ^ c ^ d, a, b, x, s, t) }
+  function ii(a: number, b: number, c: number, d: number, x: number, s: number, t: number) { return md5cmn(c ^ (b | (~d)), a, b, x, s, t) }
+  function md5blks(s: string) { const b: number[] = []; for (let i = 0; i < s.length * 32; i += 8)b[i >> 5] |= (s.charCodeAt(i / 8) & 0xFF) << (i % 32); b[s.length * 8 >> 5] |= 0x80 << (s.length * 8 % 32); b[(((s.length * 8 + 64) >>> 9) << 4) + 14] = s.length * 8; return b }
+  const x = md5blks(str); let a = 1732584193, b = -271733879, c = -1732584194, d = 271733878
+  for (let i = 0; i < x.length; i += 16) {
+    const [oa, ob, oc, od] = [a, b, c, d]
+    a = ff(a, b, c, d, x[i], 7, -680876936); d = ff(d, a, b, c, x[i + 1], 12, -389564586); c = ff(c, d, a, b, x[i + 2], 17, 606105819); b = ff(b, c, d, a, x[i + 3], 22, -1044525330)
+    a = ff(a, b, c, d, x[i + 4], 7, -176418897); d = ff(d, a, b, c, x[i + 5], 12, 1200080426); c = ff(c, d, a, b, x[i + 6], 17, -1473231341); b = ff(b, c, d, a, x[i + 7], 22, -45705983)
+    a = ff(a, b, c, d, x[i + 8], 7, 1770035416); d = ff(d, a, b, c, x[i + 9], 12, -1958414417); c = ff(c, d, a, b, x[i + 10], 17, -42063); b = ff(b, c, d, a, x[i + 11], 22, -1990404162)
+    a = ff(a, b, c, d, x[i + 12], 7, 1804603682); d = ff(d, a, b, c, x[i + 13], 12, -40341101); c = ff(c, d, a, b, x[i + 14], 17, -1502002290); b = ff(b, c, d, a, x[i + 15], 22, 1236535329)
+    a = gg(a, b, c, d, x[i + 1], 5, -165796510); d = gg(d, a, b, c, x[i + 6], 9, -1069501632); c = gg(c, d, a, b, x[i + 11], 14, 643717713); b = gg(b, c, d, a, x[i], 20, -373897302)
+    a = gg(a, b, c, d, x[i + 5], 5, -701558691); d = gg(d, a, b, c, x[i + 10], 9, 38016083); c = gg(c, d, a, b, x[i + 15], 14, -660478335); b = gg(b, c, d, a, x[i + 4], 20, -405537848)
+    a = gg(a, b, c, d, x[i + 9], 5, 568446438); d = gg(d, a, b, c, x[i + 14], 9, -1019803690); c = gg(c, d, a, b, x[i + 3], 14, -187363961); b = gg(b, c, d, a, x[i + 8], 20, 1163531501)
+    a = gg(a, b, c, d, x[i + 13], 5, -1444681467); d = gg(d, a, b, c, x[i + 2], 9, -51403784); c = gg(c, d, a, b, x[i + 7], 14, 1735328473); b = gg(b, c, d, a, x[i + 12], 20, -1926607734)
+    a = hh(a, b, c, d, x[i + 5], 4, -378558); d = hh(d, a, b, c, x[i + 8], 11, -2022574463); c = hh(c, d, a, b, x[i + 11], 16, 1839030562); b = hh(b, c, d, a, x[i + 14], 23, -35309556)
+    a = hh(a, b, c, d, x[i + 1], 4, -1530992060); d = hh(d, a, b, c, x[i + 4], 11, 1272893353); c = hh(c, d, a, b, x[i + 7], 16, -155497632); b = hh(b, c, d, a, x[i + 10], 23, -1094730640)
+    a = hh(a, b, c, d, x[i + 13], 4, 681279174); d = hh(d, a, b, c, x[i], 11, -358537222); c = hh(c, d, a, b, x[i + 3], 16, -722521979); b = hh(b, c, d, a, x[i + 6], 23, 76029189)
+    a = hh(a, b, c, d, x[i + 9], 4, -640364487); d = hh(d, a, b, c, x[i + 12], 11, -421815835); c = hh(c, d, a, b, x[i + 15], 16, 530742520); b = hh(b, c, d, a, x[i + 2], 23, -995338651)
+    a = ii(a, b, c, d, x[i], 6, -198630844); d = ii(d, a, b, c, x[i + 7], 10, 1126891415); c = ii(c, d, a, b, x[i + 14], 15, -1416354905); b = ii(b, c, d, a, x[i + 5], 21, -57434055)
+    a = ii(a, b, c, d, x[i + 12], 6, 1700485571); d = ii(d, a, b, c, x[i + 3], 10, -1894986606); c = ii(c, d, a, b, x[i + 10], 15, -1051523); b = ii(b, c, d, a, x[i + 1], 21, -2054922799)
+    a = ii(a, b, c, d, x[i + 8], 6, 1873313359); d = ii(d, a, b, c, x[i + 15], 10, -30611744); c = ii(c, d, a, b, x[i + 6], 15, -1560198380); b = ii(b, c, d, a, x[i + 13], 21, 1309151649)
+    a = ii(a, b, c, d, x[i + 4], 6, -145523070); d = ii(d, a, b, c, x[i + 11], 10, -1120210379); c = ii(c, d, a, b, x[i + 2], 15, 718787259); b = ii(b, c, d, a, x[i + 9], 21, -343485551)
+    a = safeAdd(a, oa); b = safeAdd(b, ob); c = safeAdd(c, oc); d = safeAdd(d, od)
+  }
+  function rh(n: number) { return ('0' + ((n >>> 0).toString(16))).slice(-8).match(/../g)!.reverse().join('') }
+  return [a, b, c, d].map(rh).join('')
 }
 
-type LogLine = { time: string; msg: string; type: 'info'|'success'|'error'|'warn' }
+type LogLine = { time: string; msg: string; type: 'info' | 'success' | 'error' | 'warn' }
 type Session = { key: string; uid: string; account: string }
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -80,9 +82,43 @@ export default function Home() {
   const [sonId, setSonId] = useState('')
   const [mnemonicId, setMnemonicId] = useState('')
   const [mnemonicStr, setMnemonicStr] = useState('')
+  const [mnemonickey, setMnemonicKey] = useState('')
   const [gCode, setGCode] = useState('')
   const [intervalSec, setIntervalSec] = useState('5')
   const [maxCount, setMaxCount] = useState('0')
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem('ak_session')
+    if (savedSession) {
+      try {
+        const s = JSON.parse(savedSession)
+        setSession(s)
+        fetchMnemonic(s)
+      } catch (e) {
+        console.error('Failed to parse saved session', e)
+      }
+    }
+
+    setSellAmount(localStorage.getItem('ak_sellAmount') || '')
+    setMnemonicId(localStorage.getItem('ak_mnemonicId') || '')
+    setMnemonicStr(localStorage.getItem('ak_mnemonicStr') || '')
+    setMnemonicKey(localStorage.getItem('ak_mnemonickey') || '')
+    setGCode(localStorage.getItem('ak_gCode') || '')
+    setIntervalSec(localStorage.getItem('ak_intervalSec') || '5')
+    setMaxCount(localStorage.getItem('ak_maxCount') || '0')
+  }, [])
+
+  // Persist form fields to localStorage
+  useEffect(() => {
+    if (sellAmount) localStorage.setItem('ak_sellAmount', sellAmount)
+    if (mnemonicId) localStorage.setItem('ak_mnemonicId', mnemonicId)
+    if (mnemonicStr) localStorage.setItem('ak_mnemonicStr', mnemonicStr)
+    if (mnemonickey) localStorage.setItem('ak_mnemonickey', mnemonickey)
+    if (gCode) localStorage.setItem('ak_gCode', gCode)
+    if (intervalSec) localStorage.setItem('ak_intervalSec', intervalSec)
+    if (maxCount) localStorage.setItem('ak_maxCount', maxCount)
+  }, [sellAmount, mnemonicId, mnemonicStr, mnemonickey, gCode, intervalSec, maxCount])
 
   const [statQty, setStatQty] = useState('0')
   const [statPrice, setStatPrice] = useState('—')
@@ -100,214 +136,214 @@ export default function Home() {
   const logWrapRef = useRef<HTMLDivElement>(null)
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null)
   const BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
- 
-/**
- * 解码 Base32 字符串为 Uint8Array
- */
-function base32Decode(input: string): Uint8Array {
-  // 清理输入：转大写，去除空格和 =
-  const str = input.toUpperCase().replace(/\s/g, "").replace(/=/g, "");
- 
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bitsLeft = 0;
- 
-  for (const char of str) {
-    const val = BASE32_CHARS.indexOf(char);
-    if (val === -1) {
-      throw new Error(`无效的 Base32 字符: ${char}`);
-    }
-    buffer = (buffer << 5) | val;
-    bitsLeft += 5;
-    if (bitsLeft >= 8) {
-      bitsLeft -= 8;
-      bytes.push((buffer >> bitsLeft) & 0xff);
-    }
-  }
- 
-  return new Uint8Array(bytes);
-}
- 
-/**
- * HMAC-SHA1 实现（纯 TypeScript，无需外部依赖）
- */
-function hmacSha1(key: Uint8Array, data: Uint8Array): Uint8Array {
-  const BLOCK_SIZE = 64;
- 
-  // 如果 key 超过块大小，需要先哈希（这里简化处理，Google Authenticator 密钥不会超过）
-  let normalizedKey = key;
-  if (key.length > BLOCK_SIZE) {
-    normalizedKey = sha1(key);
-  }
- 
-  // 填充 key 到块大小
-  const paddedKey = new Uint8Array(BLOCK_SIZE);
-  paddedKey.set(normalizedKey);
- 
-  const ipad = new Uint8Array(BLOCK_SIZE).map((_, i) => paddedKey[i] ^ 0x36);
-  const opad = new Uint8Array(BLOCK_SIZE).map((_, i) => paddedKey[i] ^ 0x5c);
- 
-  const innerData = new Uint8Array(ipad.length + data.length);
-  innerData.set(ipad);
-  innerData.set(data, ipad.length);
- 
-  const innerHash = sha1(innerData);
- 
-  const outerData = new Uint8Array(opad.length + innerHash.length);
-  outerData.set(opad);
-  outerData.set(innerHash, opad.length);
- 
-  return sha1(outerData);
-}
- 
-/**
- * SHA-1 实现
- */
-function sha1(data: Uint8Array): Uint8Array {
-  // 初始哈希值
-  let h0 = 0x67452301;
-  let h1 = 0xefcdab89;
-  let h2 = 0x98badcfe;
-  let h3 = 0x10325476;
-  let h4 = 0xc3d2e1f0;
- 
-  // 预处理：添加填充
-  const msgLen = data.length;
-  const bitLen = msgLen * 8;
- 
-  // 计算填充后的长度（需要是 64 字节的倍数）
-  const paddedLen = Math.ceil((msgLen + 9) / 64) * 64;
-  const padded = new Uint8Array(paddedLen);
-  padded.set(data);
-  padded[msgLen] = 0x80;
- 
-  // 在末尾写入原始长度（大端序，64位）
-  const view = new DataView(padded.buffer);
-  view.setUint32(paddedLen - 4, bitLen & 0xffffffff, false);
-  view.setUint32(paddedLen - 8, Math.floor(bitLen / 0x100000000), false);
- 
-  // 处理每个 512 位（64 字节）块
-  for (let offset = 0; offset < paddedLen; offset += 64) {
-    const w = new Uint32Array(80);
-    for (let i = 0; i < 16; i++) {
-      w[i] = view.getUint32(offset + i * 4, false);
-    }
-    for (let i = 16; i < 80; i++) {
-      w[i] = leftRotate(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
-    }
- 
-    let a = h0, b = h1, c = h2, d = h3, e = h4;
- 
-    for (let i = 0; i < 80; i++) {
-      let f: number, k: number;
-      if (i < 20) {
-        f = (b & c) | (~b & d);
-        k = 0x5a827999;
-      } else if (i < 40) {
-        f = b ^ c ^ d;
-        k = 0x6ed9eba1;
-      } else if (i < 60) {
-        f = (b & c) | (b & d) | (c & d);
-        k = 0x8f1bbcdc;
-      } else {
-        f = b ^ c ^ d;
-        k = 0xca62c1d6;
+
+  /**
+   * 解码 Base32 字符串为 Uint8Array
+   */
+  function base32Decode(input: string): Uint8Array {
+    // 清理输入：转大写，去除空格和 =
+    const str = input.toUpperCase().replace(/\s/g, "").replace(/=/g, "");
+
+    const bytes: number[] = [];
+    let buffer = 0;
+    let bitsLeft = 0;
+
+    for (const char of str) {
+      const val = BASE32_CHARS.indexOf(char);
+      if (val === -1) {
+        throw new Error(`无效的 Base32 字符: ${char}`);
       }
- 
-      const temp = (leftRotate(a, 5) + f + e + k + w[i]) >>> 0;
-      e = d;
-      d = c;
-      c = leftRotate(b, 30);
-      b = a;
-      a = temp;
+      buffer = (buffer << 5) | val;
+      bitsLeft += 5;
+      if (bitsLeft >= 8) {
+        bitsLeft -= 8;
+        bytes.push((buffer >> bitsLeft) & 0xff);
+      }
     }
- 
-    h0 = (h0 + a) >>> 0;
-    h1 = (h1 + b) >>> 0;
-    h2 = (h2 + c) >>> 0;
-    h3 = (h3 + d) >>> 0;
-    h4 = (h4 + e) >>> 0;
+
+    return new Uint8Array(bytes);
   }
- 
-  // 输出结果
-  const result = new Uint8Array(20);
-  const resultView = new DataView(result.buffer);
-  resultView.setUint32(0, h0, false);
-  resultView.setUint32(4, h1, false);
-  resultView.setUint32(8, h2, false);
-  resultView.setUint32(12, h3, false);
-  resultView.setUint32(16, h4, false);
-  return result;
-}
- 
-function leftRotate(n: number, s: number): number {
-  return ((n << s) | (n >>> (32 - s))) >>> 0;
-}
- 
-/**
- * 将数字转为 8 字节大端序
- */
-function intToBytes(num: number): Uint8Array {
-  const bytes = new Uint8Array(8);
-  for (let i = 7; i >= 0; i--) {
-    bytes[i] = num & 0xff;
-    num = Math.floor(num / 256);
+
+  /**
+   * HMAC-SHA1 实现（纯 TypeScript，无需外部依赖）
+   */
+  function hmacSha1(key: Uint8Array, data: Uint8Array): Uint8Array {
+    const BLOCK_SIZE = 64;
+
+    // 如果 key 超过块大小，需要先哈希（这里简化处理，Google Authenticator 密钥不会超过）
+    let normalizedKey = key;
+    if (key.length > BLOCK_SIZE) {
+      normalizedKey = sha1(key);
+    }
+
+    // 填充 key 到块大小
+    const paddedKey = new Uint8Array(BLOCK_SIZE);
+    paddedKey.set(normalizedKey);
+
+    const ipad = new Uint8Array(BLOCK_SIZE).map((_, i) => paddedKey[i] ^ 0x36);
+    const opad = new Uint8Array(BLOCK_SIZE).map((_, i) => paddedKey[i] ^ 0x5c);
+
+    const innerData = new Uint8Array(ipad.length + data.length);
+    innerData.set(ipad);
+    innerData.set(data, ipad.length);
+
+    const innerHash = sha1(innerData);
+
+    const outerData = new Uint8Array(opad.length + innerHash.length);
+    outerData.set(opad);
+    outerData.set(innerHash, opad.length);
+
+    return sha1(outerData);
   }
-  return bytes;
-}
- 
-/**
- * 生成 TOTP 验证码
- * @param base32Secret - Google Authenticator 的 Base32 密钥
- * @param options - 可选配置
- * @returns 6位验证码字符串
- */
- function generateTOTP(
-  base32Secret: string,
-  options: {
-    digits?: number;      // 验证码位数，默认 6
-    period?: number;      // 时间步长（秒），默认 30
-    timestamp?: number;   // 自定义时间戳（毫秒），默认当前时间
-  } = {}
-): string {
-  const { digits = 6, period = 30, timestamp = Date.now() } = options;
- 
-  // 1. 解码 Base32 密钥
-  const keyBytes = base32Decode(base32Secret);
- 
-  // 2. 计算时间步（counter）
-  const counter = Math.floor(timestamp / 1000 / period);
- 
-  // 3. 计算 HMAC-SHA1
-  const counterBytes = intToBytes(counter);
-  const hmac = hmacSha1(keyBytes, counterBytes);
- 
-  // 4. 动态截断（Dynamic Truncation）
-  const offset = hmac[19] & 0x0f;
-  const code =
-    ((hmac[offset] & 0x7f) << 24) |
-    ((hmac[offset + 1] & 0xff) << 16) |
-    ((hmac[offset + 2] & 0xff) << 8) |
-    (hmac[offset + 3] & 0xff);
- 
-  // 5. 取模并补零
-  const otp = code % Math.pow(10, digits);
-  return otp.toString().padStart(digits, "0");
-}
- 
-/**
- * 获取当前验证码及剩余有效时间
- */
- function getTOTPWithExpiry(
-  base32Secret: string,
-  period: number = 30
-): { code: string; remainingSeconds: number; expiresAt: Date } {
-  const now = Date.now();
-  const code = generateTOTP(base32Secret, { period });
-  const remainingSeconds = period - Math.floor((now / 1000) % period);
-  const expiresAt = new Date(now + remainingSeconds * 1000);
-  return { code, remainingSeconds, expiresAt };
-}
+
+  /**
+   * SHA-1 实现
+   */
+  function sha1(data: Uint8Array): Uint8Array {
+    // 初始哈希值
+    let h0 = 0x67452301;
+    let h1 = 0xefcdab89;
+    let h2 = 0x98badcfe;
+    let h3 = 0x10325476;
+    let h4 = 0xc3d2e1f0;
+
+    // 预处理：添加填充
+    const msgLen = data.length;
+    const bitLen = msgLen * 8;
+
+    // 计算填充后的长度（需要是 64 字节的倍数）
+    const paddedLen = Math.ceil((msgLen + 9) / 64) * 64;
+    const padded = new Uint8Array(paddedLen);
+    padded.set(data);
+    padded[msgLen] = 0x80;
+
+    // 在末尾写入原始长度（大端序，64位）
+    const view = new DataView(padded.buffer);
+    view.setUint32(paddedLen - 4, bitLen & 0xffffffff, false);
+    view.setUint32(paddedLen - 8, Math.floor(bitLen / 0x100000000), false);
+
+    // 处理每个 512 位（64 字节）块
+    for (let offset = 0; offset < paddedLen; offset += 64) {
+      const w = new Uint32Array(80);
+      for (let i = 0; i < 16; i++) {
+        w[i] = view.getUint32(offset + i * 4, false);
+      }
+      for (let i = 16; i < 80; i++) {
+        w[i] = leftRotate(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1);
+      }
+
+      let a = h0, b = h1, c = h2, d = h3, e = h4;
+
+      for (let i = 0; i < 80; i++) {
+        let f: number, k: number;
+        if (i < 20) {
+          f = (b & c) | (~b & d);
+          k = 0x5a827999;
+        } else if (i < 40) {
+          f = b ^ c ^ d;
+          k = 0x6ed9eba1;
+        } else if (i < 60) {
+          f = (b & c) | (b & d) | (c & d);
+          k = 0x8f1bbcdc;
+        } else {
+          f = b ^ c ^ d;
+          k = 0xca62c1d6;
+        }
+
+        const temp = (leftRotate(a, 5) + f + e + k + w[i]) >>> 0;
+        e = d;
+        d = c;
+        c = leftRotate(b, 30);
+        b = a;
+        a = temp;
+      }
+
+      h0 = (h0 + a) >>> 0;
+      h1 = (h1 + b) >>> 0;
+      h2 = (h2 + c) >>> 0;
+      h3 = (h3 + d) >>> 0;
+      h4 = (h4 + e) >>> 0;
+    }
+
+    // 输出结果
+    const result = new Uint8Array(20);
+    const resultView = new DataView(result.buffer);
+    resultView.setUint32(0, h0, false);
+    resultView.setUint32(4, h1, false);
+    resultView.setUint32(8, h2, false);
+    resultView.setUint32(12, h3, false);
+    resultView.setUint32(16, h4, false);
+    return result;
+  }
+
+  function leftRotate(n: number, s: number): number {
+    return ((n << s) | (n >>> (32 - s))) >>> 0;
+  }
+
+  /**
+   * 将数字转为 8 字节大端序
+   */
+  function intToBytes(num: number): Uint8Array {
+    const bytes = new Uint8Array(8);
+    for (let i = 7; i >= 0; i--) {
+      bytes[i] = num & 0xff;
+      num = Math.floor(num / 256);
+    }
+    return bytes;
+  }
+
+  /**
+   * 生成 TOTP 验证码
+   * @param base32Secret - Google Authenticator 的 Base32 密钥
+   * @param options - 可选配置
+   * @returns 6位验证码字符串
+   */
+  function generateTOTP(
+    base32Secret: string,
+    options: {
+      digits?: number;      // 验证码位数，默认 6
+      period?: number;      // 时间步长（秒），默认 30
+      timestamp?: number;   // 自定义时间戳（毫秒），默认当前时间
+    } = {}
+  ): string {
+    const { digits = 6, period = 30, timestamp = Date.now() } = options;
+
+    // 1. 解码 Base32 密钥
+    const keyBytes = base32Decode(base32Secret);
+
+    // 2. 计算时间步（counter）
+    const counter = Math.floor(timestamp / 1000 / period);
+
+    // 3. 计算 HMAC-SHA1
+    const counterBytes = intToBytes(counter);
+    const hmac = hmacSha1(keyBytes, counterBytes);
+
+    // 4. 动态截断（Dynamic Truncation）
+    const offset = hmac[19] & 0x0f;
+    const code =
+      ((hmac[offset] & 0x7f) << 24) |
+      ((hmac[offset + 1] & 0xff) << 16) |
+      ((hmac[offset + 2] & 0xff) << 8) |
+      (hmac[offset + 3] & 0xff);
+
+    // 5. 取模并补零
+    const otp = code % Math.pow(10, digits);
+    return otp.toString().padStart(digits, "0");
+  }
+
+  /**
+   * 获取当前验证码及剩余有效时间
+   */
+  function getTOTPWithExpiry(
+    base32Secret: string,
+    period: number = 30
+  ): { code: string; remainingSeconds: number; expiresAt: Date } {
+    const now = Date.now();
+    const code = generateTOTP(base32Secret, { period });
+    const remainingSeconds = period - Math.floor((now / 1000) % period);
+    const expiresAt = new Date(now + remainingSeconds * 1000);
+    return { code, remainingSeconds, expiresAt };
+  }
 
   function nowStr() { return new Date().toTimeString().slice(0, 8) }
 
@@ -333,25 +369,26 @@ function intToBytes(num: number): Uint8Array {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ account, password }),
       })
-  const data = await res.json();
-  console.log('登录返回数据', data);
+      const data = await res.json();
+      console.log('登录返回数据', data);
 
-// 判断是否成功
-if (data.Key && data.UserData?.Id) {
-  const s: Session = {
-    key: data.Key,
-    uid: String(data.UserData.Id),
-    account,
-  };
-  setSession(s);
-  showToast('登录成功');
-  addLog(`登录成功，UID: ${data.UserData.Id}`, 'success');
-  fetchMnemonic(s);
-} else {
-  const msg = data.msg || data.message || '登录失败';
-  showToast(msg, 'error');
-  addLog('登录失败: ' + msg, 'error');
-}
+      // 判断是否成功
+      if (data.Key && data.UserData?.Id) {
+        const s: Session = {
+          key: data.Key,
+          uid: String(data.UserData.Id),
+          account,
+        };
+        setSession(s);
+        localStorage.setItem('ak_session', JSON.stringify(s));
+        showToast('登录成功');
+        addLog(`登录成功，UID: ${data.UserData.Id}`, 'success');
+        fetchMnemonic(s);
+      } else {
+        const msg = data.msg || data.message || '登录失败';
+        showToast(msg, 'error');
+        addLog('登录失败: ' + msg, 'error');
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       showToast('网络错误: ' + msg, 'error')
@@ -370,23 +407,18 @@ if (data.Key && data.UserData?.Id) {
       })
       const data = await res.json()
       if (data.mnemonicid1 !== undefined) setMnemonicId(String(data.mnemonicid1))
-      if (data.balance !== undefined) setStatQty(data.balance)
-      if (data.price !== undefined) {
-        setStatPrice(data.price)
-        setStatTotal((parseFloat(data.balance || 0) * parseFloat(data.price || 0)).toFixed(2))
-      }
+      if (data.mnemonickey !== undefined) setMnemonicKey(String(data.mnemonickey))
       addLog('助记词信息已加载', 'info')
     } catch { addLog('获取助记词失败', 'warn') }
   }
 
-  const doSellOnce = useCallback(async (s: Session, mId: string, mStr: string, gc: string, amt: string, sp: string, si: string): Promise<boolean> => {
+  const doSellOnce = useCallback(async (s: Session, mId: string, mStr: string, gc: string, amt: string, sp: string, si: string, mKey: string): Promise<boolean> => {
     if (!amt) { showToast('请输入卖出数量', 'error'); return false }
     if (!mId) { showToast('请输入助记词编号', 'error'); return false }
     if (!mStr) { showToast('请输入助记词内容', 'error'); return false }
     if (!gc) { showToast('请输入谷歌验证码', 'error'); return false }
+    if (!mKey) { showToast('请输入助记词密钥', 'error'); return false }
 
-
-    const mnemonickey = md5(mStr)
     addLog(`发起卖出 数量:${amt} 编号:${mId} gCode:${gc}`, 'info')
     var totp = generateTOTP(gc)
     try {
@@ -395,7 +427,7 @@ if (data.Key && data.UserData?.Id) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amt, password: sp, sonId: si,
-          mnemonicid1: mId, mnemonickey, mnemonicstr1: mStr,
+          mnemonicid1: mId, mnemonickey: mKey, mnemonicstr1: mStr,
           gCode: totp, key: s.key, UserID: s.uid,
         }),
       })
@@ -435,6 +467,7 @@ if (data.Key && data.UserData?.Id) {
     // capture current field values
     const mId = mnemonicId, mStr = mnemonicStr, gc = gCode
     const amt = sellAmount, sp = sellPassword, si = sonId
+    const mKey = mnemonickey
 
     const tick = async () => {
       if (!runningRef.current) return
@@ -443,7 +476,7 @@ if (data.Key && data.UserData?.Id) {
         addLog('已完成设定次数，自动停止', 'warn')
         return
       }
-      await doSellOnce(sess, mId, mStr, gc, amt, sp, si)
+      await doSellOnce(sess, mId, mStr, gc, amt, sp, si, mKey)
       if (!runningRef.current) return
       let rem = secs
       setCountdown(rem)
@@ -471,8 +504,28 @@ if (data.Key && data.UserData?.Id) {
   function doLogout() {
     stopAuto()
     setSession(null)
+    
+    // Clear all localStorage keys
+    localStorage.removeItem('ak_session')
+    localStorage.removeItem('ak_sellAmount')
+    localStorage.removeItem('ak_mnemonicId')
+    localStorage.removeItem('ak_mnemonicStr')
+    localStorage.removeItem('ak_mnemonickey')
+    localStorage.removeItem('ak_gCode')
+    localStorage.removeItem('ak_intervalSec')
+    localStorage.removeItem('ak_maxCount')
+
+    // Reset all form state
+    setSellAmount('')
+    setMnemonicId('')
+    setMnemonicStr('')
+    setMnemonicKey('')
+    setGCode('')
+    setIntervalSec('5')
+    setMaxCount('0')
+
     setExecCount(0)
-    addLog('已退出登录', 'warn')
+    addLog('已退出登录并清空缓存数据', 'warn')
   }
 
   const secs = parseInt(intervalSec) || 5
@@ -578,10 +631,10 @@ if (data.Key && data.UserData?.Id) {
                   <input className={inputCls} value={mnemonicStr} onChange={e => setMnemonicStr(e.target.value)} placeholder="对应助记词" />
                 </Field>
               </div>
-             <Field label="谷歌验证器密钥">
-  <input className={inputCls} value={gCode} onChange={e => setGCode(e.target.value)} 
-    placeholder="Base32 密钥，如 JBSWY3DP..." />
-</Field>
+              <Field label="谷歌验证器密钥">
+                <input className={inputCls} value={gCode} onChange={e => setGCode(e.target.value)}
+                  placeholder="Base32 密钥，如 JBSWY3DP..." />
+              </Field>
             </Card>
 
             {/* auto settings */}
@@ -636,7 +689,7 @@ if (data.Key && data.UserData?.Id) {
                     ■ 停止
                   </button>
                 )}
-                <button onClick={() => session && doSellOnce(session, mnemonicId, mnemonicStr, gCode, sellAmount, sellPassword, sonId)}
+                <button onClick={() => session && doSellOnce(session, mnemonicId, mnemonicStr, gCode, sellAmount, sellPassword, sonId, mnemonickey)}
                   disabled={running}
                   className="py-3.5 rounded-xl text-sm border border-[#1e2540] text-slate-400
                     hover:border-sky-500 hover:text-sky-400 transition-colors
