@@ -456,6 +456,7 @@ export default function Home() {
     if (!session) return
     const secs = parseInt(intervalSec) || 5
     const max = parseInt(maxCount) || 0
+
     runningRef.current = true
     execCountRef.current = 0
     setRunning(true)
@@ -464,32 +465,50 @@ export default function Home() {
     addLog(`自动卖出已启动，间隔 ${secs} 秒${max > 0 ? `，最多 ${max} 次` : '，无限次'}`, 'info')
 
     const sess = session
-    // capture current field values
     const mId = mnemonicId, mStr = mnemonicStr, gc = gCode
     const amt = sellAmount, sp = sellPassword, si = sonId
     const mKey = mnemonickey
 
-    const tick = async () => {
+    const isSelling = { current: false }
+
+    // 立即执行第一次
+    isSelling.current = true
+    doSellOnce(sess, mId, mStr, gc, amt, sp, si, mKey).finally(() => {
+      isSelling.current = false
+    })
+
+    // 倒计时显示
+    let rem = secs
+    setCountdown(rem)
+
+    // 严格每 secs 秒触发
+    countdownRef.current = setInterval(() => {
       if (!runningRef.current) return
-      if (max > 0 && execCountRef.current >= max) {
-        stopAuto()
-        addLog('已完成设定次数，自动停止', 'warn')
-        return
-      }
-      await doSellOnce(sess, mId, mStr, gc, amt, sp, si, mKey)
-      if (!runningRef.current) return
-      let rem = secs
+
+      rem--
       setCountdown(rem)
-      countdownRef.current = setInterval(() => {
-        rem--
+
+      if (rem <= 0) {
+        rem = secs
         setCountdown(rem)
-        if (rem <= 0) {
-          clearInterval(countdownRef.current!)
-          if (runningRef.current) tick()
+
+        if (max > 0 && execCountRef.current >= max) {
+          stopAuto()
+          addLog('已完成设定次数，自动停止', 'warn')
+          return
         }
-      }, 1000)
-    }
-    tick()
+
+        if (isSelling.current) {
+          addLog('上次卖出未完成，跳过本次', 'warn')
+          return
+        }
+
+        isSelling.current = true
+        doSellOnce(sess, mId, mStr, gc, amt, sp, si, mKey).finally(() => {
+          isSelling.current = false
+        })
+      }
+    }, 1000)
   }
 
   function stopAuto() {
@@ -500,11 +519,10 @@ export default function Home() {
     setStatusMsg('已停止')
     addLog('自动卖出已停止', 'warn')
   }
-
   function doLogout() {
     stopAuto()
     setSession(null)
-    
+
     // Clear all localStorage keys
     localStorage.removeItem('ak_session')
     localStorage.removeItem('ak_sellAmount')

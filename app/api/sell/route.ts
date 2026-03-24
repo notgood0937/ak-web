@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/x-www-form-urlencoded",
         accept: "*/*",
       },
+      signal: AbortSignal.timeout(4_000), // ← 4秒超时，5秒间隔内必须结束
       body: params.toString(),
     });
     // 先打印原始响应排查
