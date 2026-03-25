@@ -38,6 +38,13 @@ function md5(str: string): string {
 
 type LogLine = { time: string; msg: string; type: 'info' | 'success' | 'error' | 'warn' }
 type Session = { key: string; uid: string; account: string }
+type SubAccount = {
+  Id: number;
+  MemberNo: string;
+  AceAmount: number;
+  IsMemberNo: string;
+  CreateTime: string;
+}
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -94,7 +101,10 @@ export default function Home() {
       try {
         const s = JSON.parse(savedSession)
         setSession(s)
+        setSelectedId(s.uid) // 默认选中主账户
+        setSonId('')
         fetchMnemonic(s)
+        refreshSubAccounts(s)
       } catch (e) {
         console.error('Failed to parse saved session', e)
       }
@@ -107,6 +117,59 @@ export default function Home() {
     setGCode(localStorage.getItem('ak_gCode') || '')
     setIntervalSec(localStorage.getItem('ak_intervalSec') || '5')
     setMaxCount(localStorage.getItem('ak_maxCount') || '0')
+  }, [])
+
+  const [subAccounts, setSubAccounts] = useState<SubAccount[]>([])
+  const [subLoading, setSubLoading] = useState(false)
+  const [selectedId, setSelectedId] = useState('')
+
+  const fetchMnemonic = useCallback(async (s: Session, targetUid?: string) => {
+    const displayUid = targetUid || s.uid
+    try {
+      const res = await fetch('/api/mnemonic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: s.key, UserID: s.uid }),
+      })
+      const data = await res.json()
+      if (data.mnemonicid1 !== undefined) setMnemonicId(String(data.mnemonicid1))
+      if (data.mnemonickey !== undefined) setMnemonicKey(String(data.mnemonickey))
+      addLog(`助记词信息已加载 (请求主账户 UID: ${s.uid}，当前选择: ${displayUid})`, 'info')
+      return data
+    } catch {
+      addLog(`获取助记词失败 (请求主账户 UID: ${s.uid}，当前选择: ${displayUid})`, 'warn')
+      return null
+    }
+  }, [])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedId(id)
+    if (id !== session?.uid) setSonId(id)
+    else setSonId("")
+    if (session) fetchMnemonic(session, id)
+  }, [session, fetchMnemonic])
+
+  const refreshSubAccounts = useCallback(async (s: Session) => {
+    setSubLoading(true)
+    try {
+      const res = await fetch('/api/subaccount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: s.key, UserID: s.uid }),
+      })
+      const data = await res.json()
+      if (data.Error === false && data.Data?.List) {
+        setSubAccounts(data.Data.List)
+        addLog(`获取到 ${data.Data.List.length} 个子账户`, 'info')
+      } else {
+        addLog('获取子账户列表失败: ' + (data.msg || '未知错误'), 'error')
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      addLog('获取子账户列表异常: ' + msg, 'error')
+    } finally {
+      setSubLoading(false)
+    }
   }, [])
 
   // Persist form fields to localStorage
@@ -130,6 +193,7 @@ export default function Home() {
   const [statusMsg, setStatusMsg] = useState('未启动')
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const runningRef = useRef(false)
+  const isSelling = useRef(false)
   const execCountRef = useRef(0)
 
   const [logs, setLogs] = useState<LogLine[]>([{ time: nowStr(), msg: '系统初始化完成，等待操作...', type: 'info' }])
@@ -380,10 +444,13 @@ export default function Home() {
           account,
         };
         setSession(s);
+        setSelectedId(s.uid); // 默认选中主账户
+        setSonId('');
         localStorage.setItem('ak_session', JSON.stringify(s));
         showToast('登录成功');
         addLog(`登录成功，UID: ${data.UserData.Id}`, 'success');
         fetchMnemonic(s);
+        refreshSubAccounts(s);
       } else {
         const msg = data.msg || data.message || '登录失败';
         showToast(msg, 'error');
@@ -398,29 +465,16 @@ export default function Home() {
     }
   }
 
-  async function fetchMnemonic(s: Session) {
-    try {
-      const res = await fetch('/api/mnemonic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: s.key, UserID: s.uid }),
-      })
-      const data = await res.json()
-      if (data.mnemonicid1 !== undefined) setMnemonicId(String(data.mnemonicid1))
-      if (data.mnemonickey !== undefined) setMnemonicKey(String(data.mnemonickey))
-      addLog('助记词信息已加载', 'info')
-    } catch { addLog('获取助记词失败', 'warn') }
-  }
 
-  const doSellOnce = useCallback(async (s: Session, mId: string, mStr: string, gc: string, amt: string, sp: string, si: string, mKey: string): Promise<boolean> => {
+  const doSellOnce = useCallback(async (s: Session, mId: string, mStr: string, gc: string, amt: string, sp: string, si: string, mKey: string, label: string = '主账户'): Promise<boolean> => {
     if (!amt) { showToast('请输入卖出数量', 'error'); return false }
     if (!mId) { showToast('请输入助记词编号', 'error'); return false }
     if (!mStr) { showToast('请输入助记词内容', 'error'); return false }
     if (!gc) { showToast('请输入谷歌验证码', 'error'); return false }
     if (!mKey) { showToast('请输入助记词密钥', 'error'); return false }
 
-    addLog(`发起卖出 数量:${amt} 编号:${mId} gCode:${gc}`, 'info')
-    var totp = generateTOTP(gc)
+    addLog(`[${label}] 发起卖出 数量:${amt} 编号:${mId}`, 'info')
+    const totp = generateTOTP(gc)
     try {
       const res = await fetch('/api/sell', {
         method: 'POST',
@@ -434,20 +488,22 @@ export default function Home() {
       const data = await res.json()
       const ok = data.code === 0 || data.success === true || data.msg === 'ok' || data.status === 'success'
       if (ok) {
-        execCountRef.current += 1
-        setExecCount(execCountRef.current)
-        addLog('卖出成功！' + JSON.stringify(data), 'success')
-        showToast('卖出成功 ✓')
+        if (!si) { // 只有主账户才计入次数？或者都计入？这里暂时只计入主账户，或者根据需求调整
+          execCountRef.current += 1
+          setExecCount(execCountRef.current)
+        }
+        addLog(`[${label}] 卖出成功！` + JSON.stringify(data), 'success')
+        showToast(`${label} 卖出成功 ✓`)
         return true
       } else {
         const errMsg = data.msg || data.message || JSON.stringify(data)
-        addLog('卖出失败: ' + errMsg, 'error')
-        showToast('卖出失败: ' + errMsg, 'error')
+        addLog(`[${label}] 卖出失败: ${errMsg}`, 'error')
+        showToast(`${label} 卖出失败: ${errMsg}`, 'error')
         return false
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      addLog('卖出异常: ' + msg, 'error')
+      addLog(`[${label}] 卖出异常: ${msg}`, 'error')
       return false
     }
   }, [])
@@ -465,17 +521,71 @@ export default function Home() {
     addLog(`自动卖出已启动，间隔 ${secs} 秒${max > 0 ? `，最多 ${max} 次` : '，无限次'}`, 'info')
 
     const sess = session
-    const mId = mnemonicId, mStr = mnemonicStr, gc = gCode
-    const amt = sellAmount, sp = sellPassword, si = sonId
-    const mKey = mnemonickey
+    const mStr = mnemonicStr
+    const gc = gCode
+    const amt = sellAmount
+    const sp = sellPassword
+    const currentSelectedId = selectedId
+    const currentMnemonicId = mnemonicId
+    const currentMnemonicKey = mnemonickey
+    const currentSubAccounts = subAccounts
 
-    const isSelling = { current: false }
+    const processAll = async () => {
+      if (!runningRef.current) return
+      if (isSelling.current) {
+        addLog('上次任务尚未完成，跳过本次', 'warn')
+        return
+      }
+      isSelling.current = true
+
+      try {
+        if (!currentSelectedId) {
+          addLog('未选择账户，跳过本次执行', 'warn')
+          return
+        }
+
+        if (!currentMnemonicId || !currentMnemonicKey) {
+          addLog('当前助记词信息不完整，请先刷新或重新选择账户', 'warn')
+          return
+        }
+
+        // 1. 处理主账户
+        if (currentSelectedId === sess.uid) {
+          if (amt && parseInt(amt) > 0) {
+            await doSellOnce(sess, currentMnemonicId, mStr, gc, amt, sp, "", currentMnemonicKey, '主账户')
+          }
+          return
+        }
+
+        // 2. 处理当前已选中的子账户，不在卖出时重新请求子账户或助记词
+        const targetSub = currentSubAccounts.find((sub) => String(sub.Id) === currentSelectedId)
+        if (!targetSub) {
+          addLog('当前选中的子账户不在缓存列表中，请先刷新账户列表', 'warn')
+          return
+        }
+
+        const targetAmount = amt || String(targetSub.AceAmount)
+        await doSellOnce(
+          sess,
+          currentMnemonicId,
+          mStr,
+          gc,
+          targetAmount,
+          sp,
+          String(targetSub.Id),
+          currentMnemonicKey,
+          `子账户 ${targetSub.MemberNo}`
+        )
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e)
+        addLog(`自动化执行异常: ${msg}`, 'error')
+      } finally {
+        isSelling.current = false
+      }
+    }
 
     // 立即执行第一次
-    isSelling.current = true
-    doSellOnce(sess, mId, mStr, gc, amt, sp, si, mKey).finally(() => {
-      isSelling.current = false
-    })
+    processAll()
 
     // 倒计时显示
     let rem = secs
@@ -498,15 +608,7 @@ export default function Home() {
           return
         }
 
-        if (isSelling.current) {
-          addLog('上次卖出未完成，跳过本次', 'warn')
-          return
-        }
-
-        isSelling.current = true
-        doSellOnce(sess, mId, mStr, gc, amt, sp, si, mKey).finally(() => {
-          isSelling.current = false
-        })
+        processAll()
       }
     }, 1000)
   }
@@ -522,6 +624,9 @@ export default function Home() {
   function doLogout() {
     stopAuto()
     setSession(null)
+    setSelectedId('')
+    setSonId('')
+    setSubAccounts([])
 
     // Clear all localStorage keys
     localStorage.removeItem('ak_session')
@@ -611,6 +716,56 @@ export default function Home() {
                 className="ml-auto text-xs border border-[#1e2540] text-slate-500 px-3 py-1 rounded-lg
                   hover:border-rose-500 hover:text-rose-400 transition-colors">退出</button>
             </div>
+
+            {/* sub-accounts */}
+            <Card>
+              <div className="flex items-center justify-between mb-5">
+                <CardTitle>账户选择 (单选)</CardTitle>
+                <button onClick={() => refreshSubAccounts(session)} disabled={subLoading}
+                  className="text-[10px] px-2 py-1 rounded border border-[#1e2540] text-slate-500 hover:text-sky-400 hover:border-sky-500 transition-all">
+                  {subLoading ? '刷新中...' : '刷新列表'}
+                </button>
+              </div>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                {/* Main Account Row */}
+                <div onClick={() => toggleSelect(session.uid)}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
+                    ${selectedId === session.uid ? 'bg-sky-400/10 border-sky-400/50 shadow-[0_0_15px_rgba(56,189,248,0.1)]' : 'bg-[#171c2e] border-[#1e2540] opacity-60'}`}>
+                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all
+                    ${selectedId === session.uid ? 'bg-sky-500 border-sky-500 text-black' : 'border-[#1e2540]'}`}>
+                    {selectedId === session.uid && <span className="text-[12px] font-bold">✓</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold font-mono truncate text-sky-400">MAIN ACCOUNT (主)</div>
+                    <div className="text-[10px] text-slate-500">UID: {session.uid}</div>
+                  </div>
+                </div>
+
+                {subAccounts.length === 0 && !subLoading && <div className="text-center py-4 text-xs text-slate-600 italic">暂无子账户，点击刷新获取</div>}
+                {subAccounts.filter(sub => sub.AceAmount > 0).map(sub => (
+                  <div key={sub.Id} onClick={() => toggleSelect(String(sub.Id))}
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
+                    ${selectedId === String(sub.Id)
+                        ? 'bg-emerald-400/10 border-emerald-400/50 shadow-[0_0_15px_rgba(52,211,153,0.1)]'
+                        : 'bg-[#171c2e] border-[#1e2540] opacity-60'}`}>
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all
+                      ${selectedId === String(sub.Id) ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-[#1e2540]'}`}>
+                      {selectedId === String(sub.Id) && <span className="text-[12px] font-bold">✓</span>}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold font-mono truncate">{sub.MemberNo}</div>
+                      <div className="text-[10px] text-slate-500">ID: {sub.Id}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-xs font-bold font-mono ${sub.AceAmount > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {sub.AceAmount}
+                      </div>
+                      <div className="text-[10px] text-slate-600">AceAmount</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
 
             {/* stats */}
             {/* <div className="grid grid-cols-3 gap-px bg-[#1e2540] rounded-xl overflow-hidden mb-4">
@@ -707,7 +862,7 @@ export default function Home() {
                     ■ 停止
                   </button>
                 )}
-                <button onClick={() => session && doSellOnce(session, mnemonicId, mnemonicStr, gCode, sellAmount, sellPassword, sonId, mnemonickey)}
+                <button onClick={() => session && doSellOnce(session, mnemonicId, mnemonicStr, gCode, sellAmount, sellPassword, sonId, mnemonickey, '单次卖出')}
                   disabled={running}
                   className="py-3.5 rounded-xl text-sm border border-[#1e2540] text-slate-400
                     hover:border-sky-500 hover:text-sky-400 transition-colors

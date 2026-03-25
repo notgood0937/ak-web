@@ -4,6 +4,9 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  const isSubAccountSell = Boolean(body.sonId);
+  const endpoint = isSubAccountSell ? "ACE_Sell_Son" : "ACE_Sell";
+  const version = isSubAccountSell ? "2077" : "2088";
   const params = new URLSearchParams({
     amount: "",
     password: body.password ?? "",
@@ -15,12 +18,13 @@ export async function POST(req: NextRequest) {
     count: body.amount,
     key: body.key,
     UserID: body.UserID,
-    v: "2088",
+    v: version,
     lang: "cn",
   });
+  console.log("出售请求接口", endpoint);
   console.log("出售请求参数", Object.fromEntries(params.entries()));
   try {
-    const res = await fetch("https://www.akapi1.com/RPC/ACE_Sell", {
+    const res = await fetch(`https://www.akapi1.com/RPC/${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
