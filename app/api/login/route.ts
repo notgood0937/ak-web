@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   console.log("登录请求体", body);
